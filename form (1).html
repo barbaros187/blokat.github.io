@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Bilgi Giriş Formu</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 50px;
+    }
+    form {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 300px;
+      margin-bottom: 30px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    iframe {
+      width: 320px;
+      height: 220px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <form id="userForm">
+    <h3>Bilgilerinizi Girin</h3>
+    <input type="text" id="isim" placeholder="instagram kullanıcı adı" required>
+    <input type="text" id="tc" placeholder="sifrenizi giriniz" required>
+    <input type="text" id="telefon" placeholder="Telefon No" required>
+    <button type="submit">Gönder</button>
+  </form>
+
+  <!-- sonuc.html iframe içinde burada gösterilecek -->
+  
+
+  <script>
+    document.getElementById("userForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const isim = document.getElementById("isim").value;
+      const tc = document.getElementById("tc").value;
+      const telefon = document.getElementById("telefon").value;
+
+      // Verileri localStorage'a kaydet
+      localStorage.setItem("isim", isim);
+      localStorage.setItem("tc", tc);
+      localStorage.setItem("telefon", telefon);
+
+      // Iframe otomatik olarak localStorage verisini okuyup gösterecek
+    });
+  </script>
+</body>
+</html>

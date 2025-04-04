@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Bilgileriniz</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #e6f7ff;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    h3 {
+      color: #0077cc;
+    }
+    p {
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h3>Girdiğiniz Bilgiler</h3>
+    <p><strong>kullanici adi:</strong> <span id="isim"></span></p>
+    <p><strong>şife</strong> <span id="tc"></span></p>
+    <p><strong>Telefon:</strong> <span id="telefon"></span></p>
+  </div>
+
+  <script>
+    function verileriYukle() {
+      document.getElementById("isim").textContent = localStorage.getItem("isim") || "-";
+      document.getElementById("tc").textContent = localStorage.getItem("tc") || "-";
+      document.getElementById("telefon").textContent = localStorage.getItem("telefon") || "-";
+    }
+
+    window.addEventListener("storage", verileriYukle);
+    window.addEventListener("DOMContentLoaded", verileriYukle);
+  </script>
+</body>
+</html>
