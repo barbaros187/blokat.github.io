@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hareketle Web Uygulaması Kontrolü</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 30px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .gesture-status {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .gesture-status span {
+            color: #764ba2;
+            font-size: 24px;
+        }
+
+        /* Kamera alanı */
+        .camera-area {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .video-wrapper {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        #video {
+            transform: scaleX(-1);
+            display: block;
+            width: 320px;
+            height: 240px;
+            border-radius: 20px;
+        }
+
+        /* Butonlar / UI Elemanları */
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .action-btn:active {
+            transform: translateY(0);
+        }
+
+        .action-btn.hover-effect {
+            animation: pulse 0.5s ease;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); background: #ff4757; }
+        }
+
+        /* Kartlar */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            padding: 20px;
+            border-radius: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card.selected {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: scale(1.02);
+        }
+
+        .card-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .log-area {
+            margin-top: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 15px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+            color: #333;
+        }
+
+        .instruction {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            #video { width: 280px; height: 210px; }
+            .buttons-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✋ Hareketle Web Uygulaması Kontrolü</h1>
+        <div class="subtitle">Cihaza dokunmadan - Sadece el hareketleriyle</div>
+
+        <div class="gesture-status" id="gestureStatus">
+            🖐️ Algılanan hareket: <span id="currentGesture">Bekleniyor...</span>
+        </div>
+
+        <div class="camera-area">
+            <div class="video-wrapper">
+                <video id="video" width="320" height="240" autoplay muted playsinline></video>
+            </div>
+        </div>
+
+        <div class="buttons-grid">
+            <button class="action-btn" id="btn1" data-action="click">🔘 Buton 1 (Tıkla)</button>
+            <button class="action-btn" id="btn2" data-action="click">🔘 Buton 2 (Tıkla)</button>
+            <button class="action-btn" id="btn3" data-action="click">🔘 Buton 3 (Tıkla)</button>
+            <button class="action-btn" id="backBtn" data-action="back">⬅️ Geri Git</button>
+            <button class="action-btn" id="forwardBtn" data-action="forward">➡️ İleri Git</button>
+            <button class="action-btn" id="homeBtn" data-action="home">🏠 Ana Sayfa</button>
+        </div>
+
+        <div class="cards">
+            <div class="card" data-card="1">
+                <div class="card-icon">📱</div>
+                <div>Mobil Uygulama</div>
+                <small>Kart 1 - Üzerine gel / tıkla</small>
+            </div>
+            <div class="card" data-card="2">
+                <div class="card-icon">💻</div>
+                <div>Web Geliştirme</div>
+                <small>Kart 2 - Üzerine gel / tıkla</small>
+            </div>
+            <div class="card" data-card="3">
+                <div class="card-icon">🎨</div>
+                <div>UI/UX Tasarım</div>
+                <small>Kart 3 - Üzerine gel / tıkla</small>
+            </div>
+            <div class="card" data-card="4">
+                <div class="card-icon">🤖</div>
+                <div>Yapay Zeka</div>
+                <small>Kart 4 - Üzerine gel / tıkla</small>
+            </div>
+        </div>
+
+        <div class="log-area" id="logArea">
+            <div class="log-entry">📌 Sistem başlatıldı. El hareketlerini göster...</div>
+        </div>
+
+        <div class="instruction">
+            <strong>📖 Hareket Kılavuzu:</strong><br>
+            • ✌️ <strong>İşaret parmağı (1 saniye bekle)</strong> → İmlecin altındaki butona/karta tıklar<br>
+            • ✊ <strong>Yumruk</strong> → Geri gitme işlemi<br>
+            • 🖐️ <strong>Beş parmak açık</strong> → Ana sayfaya git<br>
+            • 👆 <strong>Baş parmak + işaret parmağı</strong> → İleri git<br>
+            • 🖱️ <strong>İşaret parmağı ile imleci hareket ettir</strong> → Fare kontrolü<br>
+            • ⏱️ <strong>İşaret parmağı ile 2 saniye bekle</strong> → Sağ tıklama (context menu)
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+    <script>
+        // ---------- KONFİGÜRASYON ----------
+        let currentX = 0, currentY = 0;
+        let lastGesture = "";
+        let hoverTimeout = null;
+        let clickTimeout = null;
+        let isHovering = false;
+        let lastHoverElement = null;
+        
+        // Hareket gecikmesi için
+        let gestureStartTime = 0;
+        let currentGestureName = "";
+        
+        // DOM Elemanları
+        const video = document.getElementById('video');
+        const gestureSpan = document.getElementById('currentGesture');
+        const logArea = document.getElementById('logArea');
+        
+        // Tüm tıklanabilir elemanlar
+        const clickableElements = document.querySelectorAll('.action-btn, .card');
+        
+        function addLog(message, type = 'info') {
+            const logDiv = document.createElement('div');
+            logDiv.className = 'log-entry';
+            logDiv.innerHTML = `🕐 ${new Date().toLocaleTimeString()} - ${message}`;
+            logArea.insertBefore(logDiv, logArea.firstChild);
+            if (logArea.children.length > 15) {
+                logArea.removeChild(logArea.lastChild);
+            }
+        }
+        
+        // Hareketleri simüle et
+        function simulateClick(element) {
+            if (!element) return;
+            
+            // Animasyon efekti
+            element.classList.add('hover-effect');
+            setTimeout(() => element.classList.remove('hover-effect'), 300);
+            
+            // Tıklama olayını tetikle
+            element.click();
+            
+            // Buton ise özel işlem
+            if (element.classList.contains('action-btn')) {
+                const action = element.dataset.action;
+                if (action === 'back') {
+                    addLog('⬅️ GERİ gitme işlemi tetiklendi');
+                    history.back();
+                } else if (action === 'forward') {
+                    addLog('➡️ İLERİ gitme işlemi tetiklendi');
+                    history.forward();
+                } else if (action === 'home') {
+                    addLog('🏠 ANA SAYFA işlemi tetiklendi');
+                    window.location.href = '/';
+                } else {
+                    addLog(`🔘 Butona tıklandı: ${element.textContent.trim()}`);
+                }
+            } else if (element.classList.contains('card')) {
+                const cardNum = element.dataset.card;
+                addLog(`📇 Kart ${cardNum} seçildi!`);
+                // Kart seçme efekti
+                document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+                element.classList.add('selected');
+            }
+        }
+        
+        function simulateRightClick(element) {
+            if (!element) return;
+            addLog(`🖱️ Sağ tıklama: ${element.textContent?.trim() || 'Element'}`);
+            element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+        }
+        
+        function simulateHover(element) {
+            if (lastHoverElement === element) return;
+            
+            if (lastHoverElement) {
+                lastHoverElement.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+            }
+            
+            lastHoverElement = element;
+            if (element) {
+                element.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+                addLog(`🖱️ İmleç üzerinde: ${element.textContent?.trim() || 'Element'}`, 'hover');
+            }
+        }
+        
+        // ---------- EL ALGILAMA ----------
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7
+        });
+        
+        // Parmak pozisyonlarını bul
+        function getFingersUp(landmarks) {
+            // Parmak uçları ve kaide noktaları
+            const tips = [4, 8, 12, 16, 20]; // başparmak, işaret, orta, yüzük, serçe
+            const bases = [2, 5, 9, 13, 17];
+            
+            let fingersUp = [];
+            
+            // Başparmak özel kontrol (yatay)
+            const thumbTip = landmarks[4];
+            const thumbBase = landmarks[2];
+            fingersUp.push(thumbTip.x > thumbBase.x ? 1 : 0);
+            
+            // Diğer parmaklar
+            for (let i = 1; i < 5; i++) {
+                const tip = landmarks[tips[i]];
+                const base = landmarks[bases[i]];
+                fingersUp.push(tip.y < base.y ? 1 : 0);
+            }
+            
+            return fingersUp;
+        }
+        
+        hands.onResults((results) => {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                const fingers = getFingersUp(landmarks);
+                
+                // İmleç konumu (işaret parmağı ucu)
+                const indexTip = landmarks[8];
+                let x = indexTip.x * window.innerWidth;
+                let y = indexTip.y * window.innerHeight;
+                
+                // Ayna efekti için x'i düzelt
+                x = window.innerWidth - x;
+                
+                // İmleç altındaki elementi bul
+                const elem = document.elementFromPoint(x, y);
+                
+                // Kaç parmak yukarıda?
+                const fingersUpCount = fingers.filter(f => f === 1).length;
+                const indexUp = fingers[1] === 1;
+                const thumbUp = fingers[0] === 1;
+                const allFingersUp = fingersUpCount === 5;
+                const fist = fingersUpCount === 0;
+                const twoFingers = fingersUpCount === 2 && indexUp && thumbUp;
+                
+                // Hareket algılama
+                let gesture = "";
+                let shouldClick = false;
+                let shouldRightClick = false;
+                let shouldGoBack = false;
+                let shouldGoForward = false;
+                let shouldGoHome = false;
+                
+                if (fist) {
+                    gesture = "✊ YUMRUK";
+                    shouldGoBack = true;
+                } else if (allFingersUp) {
+                    gesture = "🖐️ BEŞ PARMAK";
+                    shouldGoHome = true;
+                } else if (twoFingers && indexUp && thumbUp) {
+                    gesture = "👍 BAŞPARMAK + İŞARET";
+                    shouldGoForward = true;
+                } else if (indexUp && fingersUpCount === 1) {
+                    gesture = "☝️ İŞARET PARMAĞI";
+                    
+                    // Hover efekti
+                    if (elem && elem !== lastHoverElement) {
+                        simulateHover(elem);
+                    }
+                    
+                    // Bekleme ile tıklama (hover timeout)
+                    if (!isHovering && elem) {
+                        isHovering = true;
+                        if (hoverTimeout) clearTimeout(hoverTimeout);
+                        hoverTimeout = setTimeout(() => {
+                            if (isHovering && elem === document.elementFromPoint(x, y)) {
+                                simulateClick(elem);
+                                addLog(`👆 Tıklama: ${elem.textContent?.trim() || 'Element'}`);
+                            }
+                            isHovering = false;
+                        }, 800);
+                    }
+                } else {
+                    gesture = "🖐️ EL ALGILANDI";
+                    isHovering = false;
+                    if (hoverTimeout) clearTimeout(hoverTimeout);
+                    simulateHover(null);
+                }
+                
+                // Anlık işlemler (bekleme gerektirmeyen)
+                if (shouldGoBack) {
+                    addLog('⬅️ GERİ gitme hareketi algılandı!');
+                    history.back();
+                }
+                if (shouldGoHome) {
+                    addLog('🏠 ANA SAYFA hareketi algılandı!');
+                    window.location.href = '/';
+                }
+                if (shouldGoForward) {
+                    addLog('➡️ İLERİ gitme hareketi algılandı!');
+                    history.forward();
+                }
+                
+                // UI güncelleme
+                if (gesture !== lastGesture) {
+                    lastGesture = gesture;
+                    gestureSpan.textContent = gesture;
+                    gestureSpan.style.opacity = '0';
+                    gestureSpan.style.transition = 'opacity 0.2s';
+                    setTimeout(() => { gestureSpan.style.opacity = '1'; }, 10);
+                }
+                
+                // İmleç takibi için custom cursor efekti
+                document.body.style.cursor = indexUp ? 'pointer' : 'default';
+                
+            } else {
+                // El algılanmadı
+                gestureSpan.textContent = "El algılanmadı 🤚";
+                simulateHover(null);
+                isHovering = false;
+                if (hoverTimeout) clearTimeout(hoverTimeout);
+                document.body.style.cursor = 'default';
+            }
+        });
+        
+        // ---------- KAMERA ----------
+        const camera = new Camera(video, {
+            onFrame: async () => {
+                await hands.send({ image: video });
+            },
+            width: 320,
+            height: 240
+        });
+        camera.start();
+        
+        addLog('🎉 Hareket kontrol sistemi başlatıldı! Elini kameraya göster.');
+        addLog('💡 İpucu: İşaret parmağını bir butonun üzerinde 1 saniye beklet → Tıklama');
+        
+        // Klavye desteği (debug için)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                addLog('⬅️ Klavye: Geri');
+                history.back();
+            } else if (e.key === 'ArrowRight') {
+                addLog('➡️ Klavye: İleri');
+                history.forward();
+            } else if (e.key === 'Home') {
+                addLog('🏠 Klavye: Ana sayfa');
+                window.location.href = '/';
+            }
+        });
+    </script>
+</body>
+</html>
