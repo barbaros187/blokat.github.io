@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>Kamera Kontrollü Akademik Asistan</title>
+    <style>
+        /* KAMERA KONTROL PANELİ - SAĞ ÜST KÖŞE */
+        .camera-control-panel {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 10px 15px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            font-family: monospace;
+            font-size: 12px;
+            color: white;
+            min-width: 160px;
+        }
+        .camera-control-panel h4 {
+            margin: 0;
+            font-size: 11px;
+            text-align: center;
+            color: #4ecdc4;
+        }
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .control-row label {
+            font-size: 10px;
+        }
+        .control-row input {
+            width: 80px;
+            cursor: pointer;
+        }
+        .control-row button {
+            background: #ef476f;
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 9px;
+            transition: 0.2s;
+        }
+        .control-row button:hover {
+            background: #ff6b6b;
+            transform: scale(1.02);
+        }
+        .status-led {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-led.on { background: #06d6a0; box-shadow: 0 0 5px #06d6a0; }
+        .status-led.off { background: #ef476f; }
+        
+        /* RESTORAN - KAMERA ARKA PLANI */
+        #bgCamera {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+            transform: scaleX(-1);
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .camera-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: -1;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Diğer stiller (kısa versiyon - ana uygulamanın stilleri buraya gelir) */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding: 10px; position: relative; }
+        .app-wrapper { max-width: 1200px; margin: 0 auto; position: relative; z-index: 10; }
+        .app-container { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(6px); border-radius: 20px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+        
+        /* Basit demo butonları ve kartlar */
+        .demo-header { background: #4361ee; color: white; padding: 15px; text-align: center; }
+        .demo-buttons { display: flex; gap: 10px; padding: 20px; flex-wrap: wrap; justify-content: center; }
+        .demo-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 12px 24px; border-radius: 40px; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        .demo-btn:active { transform: scale(0.95); }
+        .demo-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; padding: 20px; }
+        .card { background: rgba(255,255,255,0.9); padding: 20px; border-radius: 15px; text-align: center; cursor: pointer; transition: 0.2s; border: 1px solid #ddd; }
+        .card:active { transform: scale(0.97); background: #e8f0fe; }
+        .log-area { background: #1a1a2e; color: #4ecdc4; padding: 15px; margin: 20px; border-radius: 15px; font-family: monospace; font-size: 11px; max-height: 150px; overflow-y: auto; }
+        .toast-msg { position: fixed; bottom: 20px; left: 20px; background: #333; color: white; padding: 8px 16px; border-radius: 30px; font-size: 12px; z-index: 10001; animation: fadeInUp 0.3s ease; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<!-- KAMERA KONTROL PANELİ -->
+<div class="camera-control-panel" id="cameraControlPanel">
+    <h4>🎥 KAMERA KONTROL</h4>
+    <div class="control-row">
+        <label>🔘 Opaklık:</label>
+        <input type="range" id="cameraOpacity" min="0" max="100" value="35" step="5">
+        <span id="opacityValue" style="font-size:9px;">35%</span>
+    </div>
+    <div class="control-row">
+        <label>🌑 Karartma:</label>
+        <input type="range" id="overlayDarkness" min="0" max="100" value="40" step="5">
+        <span id="darknessValue" style="font-size:9px;">40%</span>
+    </div>
+    <div class="control-row">
+        <span id="cameraStatus"><span class="status-led on"></span> Kamera Açık</span>
+        <button id="toggleCameraBtn">🔴 Kapat</button>
+    </div>
+    <div class="control-row">
+        <button id="testGestureBtn" style="background:#4ecdc4;">✋ Hareket Testi</button>
+    </div>
+</div>
+
+<!-- KAMERA ARKA PLANI -->
+<video id="bgCamera" autoplay muted playsinline></video>
+<div class="camera-overlay" id="cameraOverlay"></div>
+
+<!-- ANA UYGULAMA -->
+<div class="app-wrapper">
+    <div class="app-container">
+        <div class="demo-header">
+            <h2>📚 Akademik Asistan Pro</h2>
+            <p style="font-size:12px;">Kamera arkada çalışıyor - Tıklamalar normal şekilde çalışır</p>
+        </div>
+        
+        <div class="demo-buttons">
+            <button class="demo-btn" data-action="profile">👤 Profil</button>
+            <button class="demo-btn" data-action="settings">⚙️ Ayarlar</button>
+            <button class="demo-btn" data-action="messages">💬 Mesajlar</button>
+            <button class="demo-btn" data-action="notifications">🔔 Bildirimler</button>
+            <button class="demo-btn" data-action="back">⬅️ Geri</button>
+            <button class="demo-btn" data-action="home">🏠 Ana Sayfa</button>
+        </div>
+        
+        <div class="demo-cards" id="cardContainer">
+            <div class="card" data-card="1">📱 <strong>Mobil Uygulama</strong><br><small>Kart 1</small></div>
+            <div class="card" data-card="2">💻 <strong>Web Geliştirme</strong><br><small>Kart 2</small></div>
+            <div class="card" data-card="3">🎨 <strong>UI/UX Tasarım</strong><br><small>Kart 3</small></div>
+            <div class="card" data-card="4">🤖 <strong>Yapay Zeka</strong><br><small>Kart 4</small></div>
+        </div>
+        
+        <div class="log-area" id="logArea">
+            <div>📌 Sistem başlatıldı.</div>
+            <div>🎥 Kamera arkada çalışıyor (opaklık ayarlanabilir)</div>
+            <div>💡 Tüm butonlar ve kartlar tıklanabilir</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== KAMERA KONTROL SİSTEMİ ====================
+    const bgVideo = document.getElementById('bgCamera');
+    const cameraOverlay = document.getElementById('cameraOverlay');
+    const opacitySlider = document.getElementById('cameraOpacity');
+    const opacityValue = document.getElementById('opacityValue');
+    const darknessSlider = document.getElementById('overlayDarkness');
+    const darknessValue = document.getElementById('darknessValue');
+    const toggleCameraBtn = document.getElementById('toggleCameraBtn');
+    const cameraStatusSpan = document.getElementById('cameraStatus');
+    const testGestureBtn = document.getElementById('testGestureBtn');
+    
+    let cameraStream = null;
+    let cameraEnabled = true;
+    
+    // Opaklık kontrolü
+    opacitySlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        opacityValue.innerText = val + '%';
+        bgVideo.style.opacity = val / 100;
+    });
+    
+    // Karartma kontrolü
+    darknessSlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        darknessValue.innerText = val + '%';
+        cameraOverlay.style.opacity = val / 100;
+    });
+    
+    // Kamerayı başlat
+    async function startCamera() {
+        try {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            cameraStream = stream;
+            bgVideo.srcObject = stream;
+            await bgVideo.play();
+            cameraEnabled = true;
+            cameraStatusSpan.innerHTML = '<span class="status-led on"></span> Kamera Açık';
+            toggleCameraBtn.innerHTML = '🔴 Kapat';
+            addLog('🎥 Kamera başlatıldı', 'success');
+        } catch (err) {
+            console.error('Kamera hatası:', err);
+            cameraEnabled = false;
+            cameraStatusSpan.innerHTML = '<span class="status-led off"></span> Kamera Kapalı';
+            toggleCameraBtn.innerHTML = '🟢 Aç';
+            addLog('❌ Kamera başlatılamadı: ' + (err.message || 'İzin verilmedi'), 'error');
+        }
+    }
+    
+    // Kamerayı durdur
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+        }
+        bgVideo.srcObject = null;
+        cameraEnabled = false;
+        cameraStatusSpan.innerHTML = '<span class="status-led off"></span> Kamera Kapalı';
+        toggleCameraBtn.innerHTML = '🟢 Aç';
+        addLog('🔴 Kamera durduruldu', 'info');
+    }
+    
+    // Kamera aç/kapa toggle
+    toggleCameraBtn.addEventListener('click', () => {
+        if (cameraEnabled) {
+            stopCamera();
+        } else {
+            startCamera();
+        }
+    });
+    
+    // Hareket testi (konsola yazdırır)
+    testGestureBtn.addEventListener('click', () => {
+        addLog('✋ Hareket testi: Kamera ' + (cameraEnabled ? 'açık, el hareketlerini algılayabilir' : 'kapalı, önce kamerayı açın'), 'info');
+        if (cameraEnabled) {
+            addLog('💡 İpucu: Elinizi kameraya gösterin, opaklığı artırıp kendinizi görebilirsiniz', 'info');
+        }
+    });
+    
+    // Log sistemi
+    function addLog(msg, type = 'info') {
+        const logArea = document.getElementById('logArea');
+        const logDiv = document.createElement('div');
+        logDiv.innerHTML = `🕐 ${new Date().toLocaleTimeString()} - ${msg}`;
+        logDiv.style.color = type === 'error' ? '#ef476f' : type === 'success' ? '#06d6a0' : '#4ecdc4';
+        logArea.insertBefore(logDiv, logArea.firstChild);
+        if (logArea.children.length > 12) {
+            logArea.removeChild(logArea.lastChild);
+        }
+    }
+    
+    // Toast mesajı
+    function showToast(msg) {
+        let existing = document.querySelector('.toast-msg');
+        if (existing) existing.remove();
+        let div = document.createElement('div');
+        div.className = 'toast-msg';
+        div.innerHTML = msg;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 2000);
+    }
+    
+    // ==================== TIKLAMA OLAYLARI (Demo Uygulama) ====================
+    function handleButtonClick(action) {
+        const actions = {
+            profile: () => { addLog('👤 Profil sayfası açıldı'); showToast('Profil sayfası'); },
+            settings: () => { addLog('⚙️ Ayarlar sayfası açıldı'); showToast('Ayarlar'); },
+            messages: () => { addLog('💬 Mesajlar sayfası açıldı'); showToast('Mesajlar'); },
+            notifications: () => { addLog('🔔 Bildirimler sayfası açıldı'); showToast('Bildirimler'); },
+            back: () => { addLog('⬅️ Geri gitme işlemi'); showToast('Geri gidiliyor...'); },
+            home: () => { addLog('🏠 Ana sayfaya gidiliyor'); showToast('Ana Sayfa'); }
+        };
+        if (actions[action]) actions[action]();
+        else addLog(`🔘 Butona tıklandı: ${action}`, 'info');
+    }
+    
+    // Butonları dinle
+    document.querySelectorAll('.demo-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = btn.dataset.action;
+            if (action) handleButtonClick(action);
+        });
+    });
+    
+    // Kartları dinle
+    document.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const cardNum = card.dataset.card;
+            addLog(`📇 Kart ${cardNum} seçildi: ${card.querySelector('strong')?.innerText || 'Kart'}`, 'success');
+            showToast(`Kart ${cardNum} seçildi`);
+            card.style.transform = 'scale(0.97)';
+            setTimeout(() => { card.style.transform = ''; }, 150);
+        });
+    });
+    
+    // ==================== EL HAREKETİ ALGILAMA (MEDIAPIPE İLE) ====================
+    // MediaPipe yükleme (isteğe bağlı, opsiyonel)
+    let mediapipeLoaded = false;
+    
+    function loadMediaPipe() {
+        if (document.querySelector('script[src*="mediapipe"]')) return;
+        
+        const handsScript = document.createElement('script');
+        handsScript.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js';
+        handsScript.onload = () => {
+            const cameraScript = document.createElement('script');
+            cameraScript.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js';
+            cameraScript.onload = () => {
+                addLog('✨ MediaPipe yüklendi - El hareketleri algılanabilir!', 'success');
+                initMediaPipe();
+            };
+            document.head.appendChild(cameraScript);
+        };
+        document.head.appendChild(handsScript);
+    }
+    
+    function initMediaPipe() {
+        if (typeof Hands === 'undefined') return;
+        
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7
+        });
+        
+        let lastGestureTime = 0;
+        
+        hands.onResults((results) => {
+            if (!cameraEnabled) return;
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                const thumbTip = landmarks[4];
+                const thumbBase = landmarks[2];
+                const indexTip = landmarks[8];
+                const indexBase = landmarks[5];
+                
+                const thumbUp = thumbTip.y < thumbBase.y;
+                const indexUp = indexTip.y < indexBase.y;
+                const now = Date.now();
+                
+                if (thumbUp && !indexUp && now - lastGestureTime > 1500) {
+                    // Başparmak yukarı = tıklama
+                    lastGestureTime = now;
+                    addLog('👍 Başparmak hareketi algılandı! (Tıklama simüle edildi)', 'success');
+                    showToast('👍 Başparmak ile tıklama!');
+                    // İmlecin altındaki elementi bul ve tıkla
+                    const centerX = window.innerWidth / 2;
+                    const centerY = window.innerHeight / 2;
+                    const elem = document.elementFromPoint(centerX, centerY);
+                    if (elem && (elem.classList.contains('demo-btn') || elem.classList.contains('card'))) {
+                        elem.click();
+                    }
+                } else if (thumbUp && indexUp && now - lastGestureTime > 1500) {
+                    // İki parmak = geri
+                    lastGestureTime = now;
+                    addLog('✌️ İki parmak hareketi algılandı! (Geri)', 'success');
+                    showToast('✌️ Geri gitme');
+                    handleButtonClick('back');
+                }
+            }
+        });
+        
+        // Kamera bağlantısı
+        if (typeof Camera !== 'undefined' && bgVideo) {
+            const camera = new Camera(bgVideo, {
+                onFrame: async () => {
+                    if (cameraEnabled && bgVideo.readyState >= 2) {
+                        await hands.send({ image: bgVideo });
+                    }
+                },
+                width: 640,
+                height: 480
+            });
+            camera.start();
+            addLog('🎯 El hareketi algılama aktif! Başparmak kaldır → tıklama', 'success');
+        }
+    }
+    
+    // Sayfa yüklenince
+    document.addEventListener('DOMContentLoaded', () => {
+        startCamera();
+        loadMediaPipe(); // İsteğe bağlı, el hareketleri için
+    });
+    
+    // Sayfa kapanırken kamerayı durdur
+    window.addEventListener('beforeunload', () => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+        }
+    });
+</script>
+</body>
+</html>
